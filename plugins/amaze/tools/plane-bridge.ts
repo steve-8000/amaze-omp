@@ -351,6 +351,33 @@ const factory: CustomToolFactory = (pi) => {
 			},
 		},
 		{
+			name: "plane_progress_note",
+			label: "Plane: 진행 코멘트(서브에이전트)",
+			description:
+				"Comment-only progress note for delegated subagents: appends a comment to a parent-issued work item. Requires explicit project_id + work_item_id (no repo resolution, no lookup, no find-or-create). No state transitions, no blocker semantics, no contract mutation — those remain parent-orchestrator-only.",
+			parameters: z.object({
+				project_id: z.string().describe("Parent-issued Plane project id."),
+				work_item_id: z.string().describe("Parent-issued work item id."),
+				note: z.string().describe("Progress note; use the sectioned comment format for substantial checkpoints."),
+				agent: z.string().optional().describe("Reporting agent name; prefixed to the comment as [agent:<name>]."),
+			}),
+			async execute(_toolCallId, params) {
+				const project = await getProject(params.project_id);
+				const item = await getWorkItem(project.id, params.work_item_id);
+				const tag = params.agent ? `[agent:${params.agent}] ` : "";
+				await addComment(project.id, item.id, `<p>${escapeHtml(`${tag}${params.note}`)}</p>`);
+				return {
+					content: [
+						{
+							type: "text",
+							text: `${identifierOf(project, item)}에 진행 코멘트 기록함${params.agent ? ` (agent:${params.agent})` : ""}`,
+						},
+					],
+					details: { project_id: project.id, work_item_id: item.id, identifier: identifierOf(project, item) },
+				};
+			},
+		},
+		{
 			name: "amaze_contract_set",
 			label: "Amaze: 계약 등록",
 			description:

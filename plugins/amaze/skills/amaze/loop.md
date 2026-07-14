@@ -56,6 +56,6 @@ No receipt → the criterion stays `in_progress`.
 
 ## Delegation
 
-Non-importing file edits and independent subsystem changes can go to parallel `task` workers with tight scope, each told to skip formatters/linters/full-suite runs (you run those once at the end). You own the plan, integration, and final verification.
+Non-importing file edits and independent subsystem changes go to parallel `worker` subagents with tight scope — each brief carries Target/Change/Acceptance sections, demands evidence artifacts (saved log/test-output paths, not narrative claims), and forbids formatters/linters/full-suite runs (you run those once at the end). For long-running slices, include the Plane `project_id` + `work_item_id` in the brief so the worker can post checkpoint comments via `plane_progress_note`; workers never call any other Plane or amaze tool. Route `review` (opus) over every worker-produced code change before integrating. You own the plan, integration, and final verification.
 
 **Next:** when every criterion PASSES with evidence, `read skill://amaze/review.md`.

@@ -31,9 +31,9 @@ Load each sub-skill when its phase begins and follow it literally. The contract 
 
 ## Non-negotiables
 
-- **No new subagents.** omp's `scout`/`plan`/`review`/`reviewer`/`librarian`/`designer`/`sonic`/`task` are the roster. Orchestrate them with the `task` tool; never define a new agent.
-- **No omp core or config changes.** This workflow runs entirely on this skill set plus existing tools.
-- **Plane mutation is parent-orchestrator only.** Subagents report findings; the parent records them to Plane. Never let a subagent call `plane_task_*`.
+- **Fixed 6-agent roster.** `plan`/`review`/`worker`/`scout`/`designer`/`sonic` are the roster (each pinned to an explicit model via `task.agentModelOverrides`; `task`/`reviewer`/`librarian` are disabled). Orchestrate them with the `task` tool, always naming the agent explicitly; never define a new agent.
+- **No omp core changes.** This workflow runs on this skill set plus existing tools; roster/model pinning lives in user settings, not in this skill.
+- **Plane mutation is parent-orchestrator only, with one carve-out.** Subagents never create items, transition states, complete, or touch contracts. A delegated subagent MAY append progress comments via `plane_progress_note` — but only against the parent-issued `project_id` + `work_item_id` named in its brief. Everything else (`plane_task_*`, `amaze_*`) stays parent-only.
 - **Failing-first evidence is the contract.** Every criterion is captured RED before the fix and GREEN after. Evidence added after the green code does not count.
 
 ## Phase 0 — Activate and resume
