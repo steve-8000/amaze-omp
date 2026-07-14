@@ -5,17 +5,17 @@
     "name": "steve-8000"
   },
   "metadata": {
-    "description": "Amaze workflow for omp: 증거 기반 실행 규율 + Plane 프로젝트 메모리를 하나의 플러그인으로.",
-    "version": "0.1.0",
+    "description": "Amaze workflow for omp: evidence-first execution discipline plus Plane project memory, as one installable plugin.",
+    "version": "0.2.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
     {
       "name": "amaze",
-      "description": "규율 있는 실행 워크플로우(티어 판정 → 성공기준 계약 → RED→GREEN→실면검증→정리) + Plane 마일스톤 메모리. 기존 omp 서브에이전트를 오케스트레이션한다.",
+      "description": "Chained evidence-first workflow (amaze -> amaze-plan -> amaze-loop -> amaze-review) with Plane milestone memory. Orchestrates existing omp subagents; adds no new agents and does not modify omp core.",
       "source": "./amaze",
       "category": "productivity",
-      "keywords": ["workflow", "plane", "orchestration", "verification"],
+      "keywords": ["workflow", "plane", "orchestration", "verification", "planning", "review"],
       "homepage": "https://github.com/steve-8000/amaze-omp"
     }
   ]

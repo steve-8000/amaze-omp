@@ -1,7 +1,16 @@
 # amaze (plugin)
 
-증거 기반 실행 규율 워크플로우 + Plane 프로젝트 메모리. 자세한 내용은 리포 루트 [README](../../README.md) 참고.
+Evidence-first execution workflow plus Plane project memory. See the repo-root
+[README](../../README.md) for full details.
 
-- `skills/amaze/SKILL.md` — 워크플로우 계약
-- `tools/plane-bridge.ts` — `plane_task_*` 커스텀 툴
-- `hooks/post/amaze-status.ts` — Plane 준비상태 푸터 훅
+Chained skills (`read skill://<name>`):
+
+- `amaze` — orchestrator: contract, tier triage, two-tier memory, phase routing
+- `amaze-plan` — discovery + adversarial critique + delegation to the `plan` agent
+- `amaze-loop` — `PIN -> RED -> GREEN -> SURFACE -> CLEAN` execution loop
+- `amaze-review` — independent review + Plane completion
+
+Plus:
+
+- `tools/plane-bridge.ts` — `plane_task_*` custom tools
+- `hooks/post/amaze-status.ts` — Plane readiness footer hook
