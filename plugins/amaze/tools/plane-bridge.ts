@@ -155,9 +155,18 @@ const factory: CustomToolFactory = (pi) => {
 		return toArray(data);
 	}
 
-	async function findWorkItemByExternalId(projectId: string, externalId: string): Promise<WorkItem | undefined> {
-		const items = await listWorkItems(projectId);
-		return items.find((i) => i.external_id === externalId);
+	// external_id(task_key) 정확 일치 우선, 실패 시 휴먼 식별자("CLABWEAT-7") 해석.
+	// lookup/성공 메시지가 식별자 형태를 노출하므로 입력에서도 해석해야
+	// 네임스페이스 비대칭이 없고, find-or-create의 중복 생성도 막는다.
+	function matchWorkItem(project: Project, items: WorkItem[], taskKey: string): WorkItem | undefined {
+		const byExternal = items.find((i) => i.external_id === taskKey);
+		if (byExternal) return byExternal;
+		const m = /^([A-Za-z][A-Za-z0-9]*)-(\d+)$/.exec(taskKey);
+		if (m && m[1].toUpperCase() === project.identifier.toUpperCase()) {
+			const seq = Number(m[2]);
+			return items.find((i) => i.sequence_id === seq);
+		}
+		return undefined;
 	}
 
 	async function createWorkItem(
@@ -211,7 +220,18 @@ const factory: CustomToolFactory = (pi) => {
 		if (params.work_item_id) {
 			item = await getWorkItem(project.id, params.work_item_id);
 		} else if (params.task_key) {
-			item = await findWorkItemByExternalId(project.id, params.task_key);
+			const items = await listWorkItems(project.id);
+			item = matchWorkItem(project, items, params.task_key);
+			if (!item) {
+				const listing = items
+					.slice(0, 15)
+					.map((i) => `${project.identifier}-${i.sequence_id} | ${i.name} | task_key=${i.external_id ?? "-"}`)
+					.join("\n");
+				throw new Error(
+					`task_key "${params.task_key}"와 일치하는 워크아이템이 없습니다(external_id·식별자 모두 불일치). ` +
+						`새로 만들지 말고 아래에서 대상을 지정하세요 (task_key 또는 ${project.identifier}-N 식별자 사용 가능):\n${listing || "(워크아이템 없음)"}`,
+				);
+			}
 		}
 		if (!item) {
 			throw new Error(
@@ -240,7 +260,7 @@ const factory: CustomToolFactory = (pi) => {
 				const repoName = repoNameOf(pi, params);
 				const project = await resolveProject(repoName);
 				const startedState = await resolveState(project.id, "started");
-				let item = await findWorkItemByExternalId(project.id, params.task_key);
+				let item = matchWorkItem(project, await listWorkItems(project.id), params.task_key);
 				item = item
 					? await updateWorkItemState(project.id, item.id, startedState.id)
 					: await createWorkItem(project.id, params.task.slice(0, 120), params.task, startedState.id, params.task_key);
@@ -260,7 +280,7 @@ const factory: CustomToolFactory = (pi) => {
 			parameters: z.object({
 				summary: z.string().describe("What changed and how it was verified — becomes the completion comment."),
 				work_item_id: z.string().optional(),
-				task_key: z.string().optional().describe("Resolves the work item when work_item_id is unknown."),
+				task_key: z.string().optional().describe("Resolves the work item when work_item_id is unknown; accepts the external_id task_key or the human identifier (e.g. CLABWEAT-7)."),
 				project_id: z.string().optional(),
 				repo: z.string().optional(),
 				needs_review: z.boolean().optional().describe("True when review is still pending."),
@@ -311,7 +331,7 @@ const factory: CustomToolFactory = (pi) => {
 					const q = params.query.toLowerCase();
 					items = items.filter((i) => i.name.toLowerCase().includes(q));
 				}
-				const lines = items.map((i) => `${project.identifier}-${i.sequence_id}: ${i.name} [상태 ${i.state}]`);
+				const lines = items.map((i) => `${project.identifier}-${i.sequence_id}: ${i.name} [task_key=${i.external_id ?? "-"}]`);
 				return {
 					content: [{ type: "text", text: lines.length > 0 ? lines.join("\n") : `${project.name}에 워크아이템이 없습니다.` }],
 					details: { project_id: project.id, identifier: project.identifier, count: items.length },
@@ -327,7 +347,7 @@ const factory: CustomToolFactory = (pi) => {
 				note: z.string(),
 				blocker: z.boolean().optional().describe("Mark as blocker and disarm the contract's stop gate."),
 				work_item_id: z.string().optional(),
-				task_key: z.string().optional().describe("Resolves the work item when work_item_id is unknown."),
+				task_key: z.string().optional().describe("Resolves the work item when work_item_id is unknown; accepts the external_id task_key or the human identifier (e.g. CLABWEAT-7)."),
 				project_id: z.string().optional(),
 				repo: z.string().optional(),
 			}),
@@ -418,7 +438,7 @@ const factory: CustomToolFactory = (pi) => {
 					const repoName = repoNameOf(pi, params);
 					const project = await resolveProject(repoName);
 					const startedState = await resolveState(project.id, "started");
-					let item = await findWorkItemByExternalId(project.id, params.task_key);
+					let item = matchWorkItem(project, await listWorkItems(project.id), params.task_key);
 					item = item
 						? await updateWorkItemState(project.id, item.id, startedState.id)
 						: await createWorkItem(project.id, params.objective.slice(0, 120), params.objective, startedState.id, params.task_key);
