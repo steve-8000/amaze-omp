@@ -174,7 +174,7 @@ describe("정지 게이트 (continuationDirective / activeContract)", () => {
 		const directive = continuationDirective(c);
 		expect(directive).toContain("c1[pending]");
 		expect(directive).toContain("c2[pending]");
-		expect(directive).toContain("plane_task_block");
+		expect(directive).toContain("plane_task_note(blocker: true)");
 	});
 
 	test("enforce=false면 지시문 없음", () => {

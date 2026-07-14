@@ -281,7 +281,7 @@ export function continuationDirective(contract: Contract): string | undefined {
 	return (
 		`amaze 계약 "${contract.task_key}"에 미증명 criterion이 남아 있습니다: ` +
 		`${open.map((c) => `${c.id}[${c.status}]`).join(", ")}. ` +
-		`amaze_evidence로 증명을 계속하거나, 인간 개입이 필요하면 plane_task_block(게이트 해제), ` +
+		`amaze_evidence로 증명을 계속하거나, 인간 개입이 필요하면 plane_task_note(blocker: true)로 게이트 해제, ` +
 		`리뷰 대기로 넘기려면 plane_task_complete(needs_review: true)를 호출하세요.`
 	);
 }

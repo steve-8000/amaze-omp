@@ -1,8 +1,3 @@
----
-name: amaze-loop
-description: "Execution phase of the amaze workflow. Drives every success criterion through PIN -> RED -> GREEN -> SURFACE -> CLEAN with tier-sized evidence and real manual-QA channels (bash/launch/browser/debug), plus paired cleanup receipts. Load with read skill://amaze-loop after the contract (and planning, if any) is set. Chains next to skill://amaze-review."
----
-
 # AMAZE — LOOP
 
 Execute until every success criterion PASSES with its evidence captured. The contract from `skill://amaze` binds: tier, criteria, memory split, Plane-parent-only ownership.
@@ -56,11 +51,11 @@ No receipt → the criterion stays `in_progress`.
 ## Plane checkpoints (sparingly)
 
 - At a meaningful phase boundary: `plane_task_note(note, task_key)`.
-- On a blocker: `plane_task_block(reason, task_key)` — surfaces it for a human without changing the item's state, and disarms the session-stop gate so you aren't nagged while waiting (re-arm by re-running `amaze_contract_set`).
+- On a blocker: `plane_task_note(note, task_key, blocker: true)` — surfaces it for a human without changing the item's state, and disarms the session-stop gate so you aren't nagged while waiting (re-arm by re-running `amaze_contract_set`).
 - Findings and learnings go to the local notepad; RED/GREEN/SURFACE/CLEAN evidence goes to `amaze_evidence`, not Plane.
 
 ## Delegation
 
 Non-importing file edits and independent subsystem changes can go to parallel `task` workers with tight scope, each told to skip formatters/linters/full-suite runs (you run those once at the end). You own the plan, integration, and final verification.
 
-**Next:** when every criterion PASSES with evidence, `read skill://amaze-review`.
+**Next:** when every criterion PASSES with evidence, `read skill://amaze/review.md`.

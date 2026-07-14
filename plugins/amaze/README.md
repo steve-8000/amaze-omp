@@ -6,9 +6,9 @@ Evidence-first execution workflow plus Plane project memory. See the repo-root
 Chained skills (`read skill://<name>`):
 
 - `amaze` — orchestrator: contract, tier triage, two-tier memory, phase routing
-- `amaze-plan` — discovery + adversarial critique + delegation to the `plan` agent
-- `amaze-loop` — `PIN -> RED -> GREEN -> SURFACE -> CLEAN` execution loop
-- `amaze-review` — independent review + Plane completion
+- `amaze/plan.md` — discovery + adversarial critique + delegation to the `plan` agent
+- `amaze/loop.md` — `PIN -> RED -> GREEN -> SURFACE -> CLEAN` execution loop
+- `amaze/review.md` — independent review + Plane completion
 
 Plus the contract core:
 
@@ -19,4 +19,4 @@ Plus the contract core:
   `amaze_status` custom tools; `plane_task_complete` is gated on the contract
 - `hooks/post/amaze-status.ts` — footer progress, deterministic compaction
   preservation, and the session-stop continuation gate (armed by the contract,
-  disarmed by `plane_task_complete`/`plane_task_block`, capped at 8 by the harness)
+  disarmed by `plane_task_complete`/`plane_task_note(blocker: true)`, capped at 8 by the harness)

@@ -1,17 +1,12 @@
----
-name: amaze-plan
-description: "Planning phase of the amaze workflow. Runs a parallel discovery wave, optionally an adversarial (hyperplan-lite) scout critique for contested or HEAVY design, then delegates plan formalization to omp's plan agent instead of writing the plan itself. Load with read skill://amaze-plan when open design decisions remain. Chains next to skill://amaze-loop."
----
-
 # AMAZE — PLAN
 
-Load this only when open design decisions remain: unclear module boundaries, several viable decompositions, or a multi-file build whose dependency order is not obvious. A known procedure, however many steps, does not need a plan phase — plan directly in the notepad and go to `skill://amaze-loop`.
+Load this only when open design decisions remain: unclear module boundaries, several viable decompositions, or a multi-file build whose dependency order is not obvious. A known procedure, however many steps, does not need a plan phase — plan directly in the notepad and go to `skill://amaze/loop.md`.
 
 The contract from `skill://amaze` still binds: tier, success criteria (already registered via `amaze_contract_set`), memory split, and Plane-parent-only ownership.
 
 ## Step 1 — Ensure the codegraph index, then discovery wave (parallel, lead with this)
 
-Before any lookups: check for `.codegraph/` at the project root. Missing → run `codegraph init` there once (bash, repo root); it is idempotent, safe to re-run, and this project has standing user approval to run it automatically as part of `amaze-plan`. If init fails, is unsupported for this stack, or exceeds a reasonable timeout, fall back to grep/glob/lsp for the whole task without retrying.
+Before any lookups: check for `.codegraph/` at the project root. Missing → run `codegraph init` there once (bash, repo root); it is idempotent, safe to re-run, and this project has standing user approval to run it automatically as part of the amaze plan phase. If init fails, is unsupported for this stack, or exceeds a reasonable timeout, fall back to grep/glob/lsp for the whole task without retrying.
 
 Never guess from memory; locate with the right tool and re-read before you claim or change. Fire 3+ independent lookups in one action; serialize only when one output strictly feeds the next.
 
@@ -61,4 +56,4 @@ If the plan agent returns clarifying questions, forward them to the user unmodif
 2. `plane_task_note(note = plan summary, task_key)` — persist the plan on the work item; the contract itself is already on record from Phase 1.
 3. Append the plan to the notepad `## Plan`.
 
-**Next:** `read skill://amaze-loop` and begin execution.
+**Next:** `read skill://amaze/loop.md` and begin execution.

@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Amaze workflow for omp: evidence-first execution discipline plus Plane project memory, as one installable plugin.",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
     {
       "name": "amaze",
-      "description": "Chained evidence-first workflow (amaze -> amaze-plan -> amaze-loop -> amaze-review) with Plane milestone memory. Orchestrates existing omp subagents; adds no new agents and does not modify omp core.",
+      "description": "Evidence-first workflow (amaze skill with chained plan/loop/review phases) plus Plane milestone memory. Orchestrates existing omp subagents; adds no new agents and does not modify omp core.",
       "source": "./amaze",
       "category": "productivity",
       "keywords": ["workflow", "plane", "orchestration", "verification", "planning", "review"],

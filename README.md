@@ -11,14 +11,14 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
 - **Chained skills** (`skills/`):
   - `amaze` — orchestrator: mode activation, LIGHT/HEAVY tier triage, the binding
     success-criteria contract, two-tier memory, and phase routing.
-  - `amaze-plan` — discovery wave + optional hyperplan-lite adversarial critique,
+  - `amaze/plan.md` — discovery wave + optional hyperplan-lite adversarial critique,
     then delegation to omp's `plan` agent.
-  - `amaze-loop` — the `PIN -> RED -> GREEN -> SURFACE -> CLEAN` execution loop with
+  - `amaze/loop.md` — the `PIN -> RED -> GREEN -> SURFACE -> CLEAN` execution loop with
     real manual-QA channels and paired cleanup receipts.
-  - `amaze-review` — independent review (omp `review` agent for HEAVY), clean cutover,
+  - `amaze/review.md` — independent review (omp `review` agent for HEAVY), clean cutover,
     and Plane work-item closure with a verification summary.
 
-  The skills chain via `read skill://amaze-plan|amaze-loop|amaze-review`; the entry
+  The phases chain via `read skill://amaze/plan.md|loop.md|review.md`; the entry
   `amaze` skill owns the contract and routes between phases.
 
 - `lib/contract-core.ts` — the **contract core**: zero-dep local contract state at
@@ -36,7 +36,7 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
   - `amaze_status` — one-call contract recovery after compaction or resume.
   - `plane_task_complete` — **gated**: rejects with an error while unproven criteria
     remain (`needs_review: true` is the only bypass); on success it closes the contract,
-    disarming all hooks. `plane_task_block` also disarms the stop gate while a human
+    disarming all hooks. `plane_task_note(blocker: true)` also disarms the stop gate while a human
     is needed. Plus `plane_task_note|lookup`.
 
 - `hooks/post/amaze-status.ts` — zero-token enforcement/visibility:

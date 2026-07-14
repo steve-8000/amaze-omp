@@ -1,6 +1,6 @@
 ---
 name: amaze
-description: "Evidence-first execution workflow orchestrator for omp. Classifies the change (LIGHT/HEAVY), registers a binding success-criteria contract via a deterministic contract tool, keeps memory split between that contract file and a lightweight notepad, and routes each phase to the chained sub-skills amaze-plan, amaze-loop, and amaze-review. Reuses existing omp subagents (scout/plan/review/librarian) through the task tool and defines no new agents. Triggers: amaze, /amaze, ultrawork, 'evidence-based', 'prove it works end to end', 'plan then build then review', 'ship it verified'."
+description: "Evidence-first execution workflow for omp: LIGHT/HEAVY triage, a binding success-criteria contract, then chained plan/loop/review phase files loaded from within this skill. Triggers: amaze, /amaze, ultrawork, 'evidence-based', 'prove it works', 'ship it verified'."
 ---
 
 # AMAZE
@@ -15,17 +15,17 @@ Deliver exactly what was asked, working end to end, proven by captured evidence.
 graph LR
   A[0 Activate + resume] --> B[1 Contract: tier + criteria + memory]
   B --> C{open design decisions?}
-  C -- yes --> P[2 Plan: skill://amaze-plan]
-  C -- no --> L[3 Execute: skill://amaze-loop]
+  C -- yes --> P[2 Plan: skill://amaze/plan.md]
+  C -- no --> L[3 Execute: skill://amaze/loop.md]
   P --> L
-  L --> R[4 Review + complete: skill://amaze-review]
+  L --> R[4 Review + complete: skill://amaze/review.md]
 ```
 
 This skill owns Phases 0-1 and the routing. Each later phase lives in a chained skill you load on demand with the `read` tool:
 
-- **Phase 2 — Plan** → `read skill://amaze-plan` (only when open design decisions remain).
-- **Phase 3 — Execute** → `read skill://amaze-loop`.
-- **Phase 4 — Review & complete** → `read skill://amaze-review`.
+- **Phase 2 — Plan** → `read skill://amaze/plan.md` (only when open design decisions remain).
+- **Phase 3 — Execute** → `read skill://amaze/loop.md`.
+- **Phase 4 — Review & complete** → `read skill://amaze/review.md`.
 
 Load each sub-skill when its phase begins and follow it literally. The contract below (tier, criteria, memory, ownership) binds every phase.
 
@@ -75,8 +75,8 @@ Plane stays the durable, human-visible layer (`plane_task_*`); a compaction hook
 
 ## Routing
 
-- Open design decisions remain (unclear module boundaries, several viable decompositions, non-obvious dependency order) → `read skill://amaze-plan`. Otherwise skip to execution.
-- Ready to build → `read skill://amaze-loop`.
-- All criteria pass → `read skill://amaze-review` before declaring done.
+- Open design decisions remain (unclear module boundaries, several viable decompositions, non-obvious dependency order) → `read skill://amaze/plan.md`. Otherwise skip to execution.
+- Ready to build → `read skill://amaze/loop.md`.
+- All criteria pass → `read skill://amaze/review.md` before declaring done.
 
-Each sub-skill ends by pointing to the next phase. Do not declare completion outside `amaze-review`.
+Each sub-skill ends by pointing to the next phase. Do not declare completion outside the review phase (`amaze/review.md`).

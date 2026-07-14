@@ -6,7 +6,7 @@
 //     — LLM 요약이 계약(성공기준/증거 경로)을 유실하는 것을 코드로 방지.
 //   - session_stop: 활성 계약(enforce가 꺼져 있지 않은)에 미증명 criterion이
 //     남아 있으면 continuation을 강제 주입 — 하네스가 연속 8회로 상한을 건다.
-//     이탈구: plane_task_complete(needs_review 포함, 계약 마감) / plane_task_block(게이트 해제).
+//     이탈구: plane_task_complete(needs_review 포함, 계약 마감) / plane_task_note(blocker: true)(게이트 해제).
 //
 // 툴 I/O를 건드리지 않는다.
 import type { HookAPI } from "@oh-my-pi/pi-coding-agent/extensibility/hooks";

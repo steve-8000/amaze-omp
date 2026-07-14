@@ -1,15 +1,10 @@
----
-name: amaze-review
-description: "Review and completion phase of the amaze workflow. Gates on every success criterion passing with captured evidence, runs an independent omp review agent to unconditional approval for HEAVY work, removes scaffolding, then closes the Plane work item with a verification summary. Load with read skill://amaze-review before declaring done. Final phase of the amaze chain."
----
-
 # AMAZE — REVIEW & COMPLETE
 
 The final phase. Completion is declared only here. The contract from `skill://amaze` binds: tier, criteria, memory split, Plane-parent-only ownership.
 
 ## Step 1 — Gate
 
-Call `amaze_status(task_key)` to confirm EVERY criterion PASSES with its evidence and cleanup receipt. If any is unproven, return to `skill://amaze-loop` — do not paper over it here; `plane_task_complete` refuses to close while a criterion lacks evidence (a code gate; only `needs_review: true` bypasses it).
+Call `amaze_status(task_key)` to confirm EVERY criterion PASSES with its evidence and cleanup receipt. If any is unproven, return to `skill://amaze/loop.md` — do not paper over it here; `plane_task_complete` refuses to close while a criterion lacks evidence (a code gate; only `needs_review: true` bypasses it).
 
 Re-run each criterion's scenario once more and confirm PASS inline with the evidence paths.
 

@@ -230,11 +230,11 @@ const factory: CustomToolFactory = (pi) => {
 			name: "plane_task_start",
 			label: "Plane: 작업 시작",
 			description:
-				"Plane에 작업을 레포별 영구 메모리로 기록하기 시작한다. 현재 레포(cwd 이름 또는 repo override)에 매핑된 Plane 프로젝트를 resolve하거나(없으면 생성), task_key로 워크아이템을 find-or-create(멱등)하고, 프로젝트의 시작 상태로 전환하고, 작업 개요를 시작 코멘트로 남긴다. 툴 1번 호출로 여러 단계짜리 수동 MCP 시퀀스를 대체한다.",
+				"Start tracking a task in Plane: resolve (or create) the project mapped to this repo, find-or-create the work item by task_key (idempotent), move it to the started state, and post the task as a start comment.",
 			parameters: z.object({
-				task: z.string().describe("무엇을, 왜 하는지 — 시작 코멘트가 되고, 새로 만드는 경우 워크아이템 이름/설명이 된다."),
-				task_key: z.string().describe("이 작업의 안정적 식별자(external_id). 같은 key로 다시 부르면 같은 워크아이템을 이어받는다."),
-				repo: z.string().optional().describe("레포/프로젝트 이름 override; 기본값은 현재 작업 디렉터리 이름."),
+				task: z.string().describe("What and why — becomes the start comment, and the work item name/description when created."),
+				task_key: z.string().describe("Stable identifier (external_id); the same key resumes the same work item."),
+				repo: z.string().optional().describe("Repo/project name override; defaults to cwd basename."),
 			}),
 			async execute(_toolCallId, params) {
 				const repoName = repoNameOf(pi, params);
@@ -256,14 +256,14 @@ const factory: CustomToolFactory = (pi) => {
 			name: "plane_task_complete",
 			label: "Plane: 작업 완료",
 			description:
-				"작업 추적을 마무리한다: 완료 요약 코멘트를 남기고, 워크아이템을 프로젝트의 완료 상태로 전환하고(needs_review가 true면 완료 대신 started 상태로 남겨 리뷰 대기임을 표시), read-back으로 확인한다. amaze 계약이 있으면 미증명 criterion이 남아 있는 한 에러로 거부된다(코드 게이트) — needs_review만 우회. work_item_id를 알면 plane_task_start/amaze_contract_set의 결과값을 넘기고, 모르면 task_key(+repo)로 resolve한다.",
+				"Finish tracking: post the summary comment, transition to completed (needs_review keeps it in started as review-pending), verify by read-back. Errors while an amaze contract has unproven criteria (code gate; needs_review bypasses). Resolve via work_item_id or task_key(+repo).",
 			parameters: z.object({
-				summary: z.string().describe("무엇이 바뀌었고 어떻게 검증했는지 — 완료 코멘트가 된다."),
+				summary: z.string().describe("What changed and how it was verified — becomes the completion comment."),
 				work_item_id: z.string().optional(),
-				task_key: z.string().optional().describe("work_item_id를 모를 때 이 key로 워크아이템을 resolve한다."),
+				task_key: z.string().optional().describe("Resolves the work item when work_item_id is unknown."),
 				project_id: z.string().optional(),
 				repo: z.string().optional(),
-				needs_review: z.boolean().optional().describe("완전히 끝난 게 아니라 아직 리뷰가 필요하면 true."),
+				needs_review: z.boolean().optional().describe("True when review is still pending."),
 			}),
 			async execute(_toolCallId, params) {
 				const contract = params.task_key
@@ -298,10 +298,10 @@ const factory: CustomToolFactory = (pi) => {
 			name: "plane_task_lookup",
 			label: "Plane: 작업 조회",
 			description:
-				"읽기 전용: 레포에 매핑된 Plane 프로젝트를 resolve하고 그 프로젝트의 워크아이템 목록을 조회한다(워크아이템 이름 부분 문자열로 대소문자 무시 필터링 가능). '이 레포에 뭐가 추적되고 있나' 정도만 필요할 때 raw list_projects/list_work_items/search_work_items MCP 왕복 대신 이 툴을 쓴다.",
+				"Read-only: resolve this repo's Plane project and list its work items (optional case-insensitive name substring filter).",
 			parameters: z.object({
 				repo: z.string().optional(),
-				query: z.string().optional().describe("워크아이템 이름에 대한 대소문자 무시 부분 문자열 필터."),
+				query: z.string().optional().describe("Case-insensitive substring filter on work item names."),
 			}),
 			async execute(_toolCallId, params) {
 				const repoName = repoNameOf(pi, params);
@@ -320,49 +320,32 @@ const factory: CustomToolFactory = (pi) => {
 		},
 		{
 			name: "plane_task_note",
-			label: "Plane: 메모 추가",
+			label: "Plane: 메모/블로커",
 			description:
-				"상태 전환 없이 중간 진행 상황 코멘트만 추가한다 — plane_task_start와 plane_task_complete 사이에 기록해둘 만한 체크포인트가 있을 때, 전체 상태전환 동기화 비용 없이 코멘트 호출 1번으로 처리한다.",
+				"Add a progress comment without a state transition. With blocker: true, mark it as a blocker for humans and, if an amaze contract exists, disarm the session-stop continuation gate (enforce=false) until amaze_contract_set re-arms it.",
 			parameters: z.object({
 				note: z.string(),
+				blocker: z.boolean().optional().describe("Mark as blocker and disarm the contract's stop gate."),
 				work_item_id: z.string().optional(),
-				task_key: z.string().optional().describe("work_item_id를 모를 때 이 key로 워크아이템을 resolve한다."),
+				task_key: z.string().optional().describe("Resolves the work item when work_item_id is unknown."),
 				project_id: z.string().optional(),
 				repo: z.string().optional(),
 			}),
 			async execute(_toolCallId, params) {
 				const { project, item } = await resolveContext(pi, params);
-				await addComment(project.id, item.id, `<p>${escapeHtml(params.note)}</p>`);
-				return {
-					content: [{ type: "text", text: `${identifierOf(project, item)}에 메모 추가함` }],
-					details: { project_id: project.id, work_item_id: item.id, identifier: identifierOf(project, item) },
-				};
-			},
-		},
-		{
-			name: "plane_task_block",
-			label: "Plane: 블로커 표시",
-			description:
-				"블로커를 표시 코멘트로 남긴다 — 사람이 챙길 수 있게 드러내되, Plane 워크아이템 자체의 상태는 건드리지 않는다. amaze 계약이 있으면 session_stop continuation 게이트도 해제한다(enforce=false) — 인간 개입 대기 중 재촉을 멈춘다. 재개 시 amaze_contract_set이 다시 잠근다.",
-			parameters: z.object({
-				reason: z.string(),
-				work_item_id: z.string().optional(),
-				task_key: z.string().optional().describe("work_item_id를 모를 때 이 key로 워크아이템을 resolve한다."),
-				project_id: z.string().optional(),
-				repo: z.string().optional(),
-			}),
-			async execute(_toolCallId, params) {
-				const { project, item } = await resolveContext(pi, params);
-				await addComment(project.id, item.id, `<p><b>블로킹</b>: ${escapeHtml(params.reason)}</p>`);
-				const contract = params.task_key
-					? loadContract(pi.cwd, params.task_key)
-					: listContracts(pi.cwd).find((c) => c.plane?.work_item_id === item.id);
-				if (contract && contract.enforce !== false) {
-					contract.enforce = false;
-					saveContract(pi.cwd, contract);
+				const html = params.blocker ? `<p><b>블로킹</b>: ${escapeHtml(params.note)}</p>` : `<p>${escapeHtml(params.note)}</p>`;
+				await addComment(project.id, item.id, html);
+				if (params.blocker) {
+					const contract = params.task_key
+						? loadContract(pi.cwd, params.task_key)
+						: listContracts(pi.cwd).find((c) => c.plane?.work_item_id === item.id);
+					if (contract && contract.enforce !== false) {
+						contract.enforce = false;
+						saveContract(pi.cwd, contract);
+					}
 				}
 				return {
-					content: [{ type: "text", text: `${identifierOf(project, item)} 블로킹 표시함` }],
+					content: [{ type: "text", text: `${identifierOf(project, item)}에 ${params.blocker ? "블로커" : "메모"} 기록함` }],
 					details: { project_id: project.id, work_item_id: item.id, identifier: identifierOf(project, item) },
 				};
 			},
@@ -371,29 +354,29 @@ const factory: CustomToolFactory = (pi) => {
 			name: "amaze_contract_set",
 			label: "Amaze: 계약 등록",
 			description:
-				"amaze 성공기준 계약을 등록/갱신한다. 로컬 계약 파일(.omp/amaze/<task_key>.json)을 생성하거나 criteria를 id 기준 upsert(기존 증거 보존)하고, Plane 워크아이템을 find-or-create해 계약 전문을 시작 코멘트로 남긴다(plane_task_start 흡수 — 따로 부를 필요 없음). 등록된 계약은 기본적으로 session_stop continuation 게이트를 잠근다(enforce=false로 끌 수 있음; plane_task_block도 해제). 이후 증거는 amaze_evidence, 진행 확인은 amaze_status, 완료는 plane_task_complete(계약 게이트 적용).",
+				"Register/update an amaze success-criteria contract: write .omp/amaze/<task_key>.json (criteria upserted by id, evidence preserved) and find-or-create the Plane work item with the contract as its start comment (absorbs plane_task_start). Arms the session-stop continuation gate unless enforce=false (plane_task_note blocker:true also disarms). Then: amaze_evidence for proof, amaze_status for progress, plane_task_complete to close (gated).",
 			parameters: z.object({
-				task_key: z.string().describe("계약의 안정적 식별자 — Plane external_id와 로컬 파일명으로 쓰인다."),
-				objective: z.string().describe("한 문장 목표 — 워크아이템 이름/설명이 된다."),
+				task_key: z.string().describe("Stable contract identifier — used as Plane external_id and the local filename."),
+				objective: z.string().describe("One-sentence goal — becomes the work item name/description."),
 				tier: z.enum(["LIGHT", "HEAVY"]),
 				criteria: z
 					.array(
 						z.object({
-							id: z.string().optional().describe("생략 시 c1, c2… 자동 부여."),
-							scenario: z.string().describe("문자 그대로의 명령/페이지 액션/페이로드."),
-							observable: z.string().describe("PASS/FAIL을 가르는 단일 이진 관찰값."),
+							id: z.string().optional().describe("Auto-assigned c1, c2… when omitted."),
+							scenario: z.string().describe("The literal command / page action / payload."),
+							observable: z.string().describe("Single binary observation deciding PASS/FAIL."),
 							proof: z
 								.enum(["red-green", "review"])
 								.optional()
-								.describe("기본 red-green(failing-first 강제). 기계 소비자 없는 순수 산문 변경만 review(서피스 직행)."),
+								.describe("Default red-green (failing-first enforced). Use review only for pure prose changes with no machine consumer."),
 						}),
 					)
 					.min(1),
-				repo: z.string().optional().describe("레포/프로젝트 이름 override; 기본값은 cwd 이름."),
+				repo: z.string().optional().describe("Repo/project name override; defaults to cwd basename."),
 				enforce: z
 					.boolean()
 					.optional()
-					.describe("기본 true: 미증명 criterion이 남아 있으면 세션 정지 시 continuation을 강제. false면 계약 추적만 하고 게이트는 잠그지 않는다."),
+					.describe("Default true: unproven criteria force continuation at session stop. False tracks only, no gate."),
 			}),
 			async execute(_toolCallId, params) {
 				const contract: Contract = loadContract(pi.cwd, params.task_key) ?? newContract(params.task_key, params.objective, params.tier);
@@ -439,13 +422,13 @@ const factory: CustomToolFactory = (pi) => {
 			name: "amaze_evidence",
 			label: "Amaze: 증거 기록",
 			description:
-				"criterion에 증거를 기록하고 전이 규칙을 결정적으로 강제한다: red/green/surface는 artifact_path 필수(실재하는 비어있지 않은 파일, cwd/tmp/~/.omp 안); RED 없이 GREEN 거부(failing-first), GREEN 전 SURFACE 거부, proof=review는 SURFACE 직행; cleanup은 note 필수 receipt. Plane 왕복 없음 — 고빈도로 불러도 무료.",
+				"Record evidence for a criterion; transitions enforced in code: red/green/surface require artifact_path (existing non-empty file under cwd/tmp/~/.omp); GREEN rejected without RED (failing-first), SURFACE rejected before GREEN, proof=review goes straight to SURFACE; cleanup requires a note. No Plane round-trip — free at high frequency.",
 			parameters: z.object({
 				task_key: z.string(),
 				criterion_id: z.string(),
 				kind: z.enum(["red", "green", "surface", "cleanup"]),
-				artifact_path: z.string().optional().describe("증거 아티팩트 파일 경로. red/green/surface에 필수."),
-				note: z.string().optional().describe("한 줄 요지. cleanup receipt에는 필수."),
+				artifact_path: z.string().optional().describe("Evidence artifact file path; required for red/green/surface."),
+				note: z.string().optional().describe("One-line gist; required for cleanup receipts."),
 			}),
 			async execute(_toolCallId, params) {
 				const contract = loadContract(pi.cwd, params.task_key);
@@ -476,7 +459,7 @@ const factory: CustomToolFactory = (pi) => {
 			name: "amaze_status",
 			label: "Amaze: 계약 상태",
 			description:
-				"로컬 계약 요약 1콜 — criterion별 상태/증거 경로/미증명 목록. 컴팩션이나 세션 재개 후 계약 복구는 notepad 재독 대신 이걸 쓴다. task_key 생략 시 가장 최근에 갱신된 미완료 계약.",
+				"One-call local contract summary: per-criterion status, evidence paths, unproven list. Use after compaction/session resume instead of re-reading the notepad. Omit task_key for the most recently updated open contract.",
 			parameters: z.object({
 				task_key: z.string().optional(),
 			}),
