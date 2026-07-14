@@ -5,11 +5,11 @@ description: "Review and completion phase of the amaze workflow. Gates on every 
 
 # AMAZE — REVIEW & COMPLETE
 
-The final phase. Completion is declared only here. The contract from `skill://amaze` binds: tier, criteria, two-tier memory, Plane-parent-only ownership.
+The final phase. Completion is declared only here. The contract from `skill://amaze` binds: tier, criteria, memory split, Plane-parent-only ownership.
 
 ## Step 1 — Gate
 
-Do not proceed until EVERY success criterion PASSES with its evidence artifact captured and its cleanup receipt recorded. If any criterion is unproven, return to `skill://amaze-loop` — do not paper over it here.
+Call `amaze_status(task_key)` to confirm EVERY criterion PASSES with its evidence and cleanup receipt. If any is unproven, return to `skill://amaze-loop` — do not paper over it here; `plane_task_complete` refuses to close while a criterion lacks evidence (a code gate; only `needs_review: true` bypasses it).
 
 Re-run each criterion's scenario once more and confirm PASS inline with the evidence paths.
 
@@ -18,7 +18,7 @@ Re-run each criterion's scenario once more and confirm PASS inline with the evid
 - **HEAVY** → dispatch an independent `task` `agent: review` (or `reviewer`). Give it the change set, the success criteria, and the evidence. Fix what it raises and re-review; loop until unconditional approval. Do not self-certify HEAVY work.
 - **LIGHT** → self-review recorded in the notepad: walk each criterion, its evidence, and the diff from the user's perspective. Confirm every changed line traces to the request.
 
-Reviewers are read-only reporters — they never touch Plane. You record their outcome.
+Reviewers are read-only reporters — they never touch Plane. You record their outcome; for a `proof: review` criterion, save the verdict to a file and log it via `amaze_evidence(kind: surface, artifact_path)`.
 
 ## Step 3 — Clean cutover
 
@@ -28,7 +28,7 @@ Reviewers are read-only reporters — they never touch Plane. You record their o
 
 ## Step 4 — Close the work item
 
-1. `plane_task_complete(summary, task_key, needs_review?)` where the summary states what changed (files/modules) and how it was verified (the scenarios run and their evidence).
+1. `plane_task_complete(summary, task_key, needs_review?)` where the summary states what changed (files/modules) and how it was verified (the scenarios run and their evidence). The tool re-checks the contract and errors if any criterion still lacks evidence.
    - Fully done and approved → omit `needs_review` (moves to completed).
    - Still awaiting human review → `needs_review: true` (stays in progress, flagged for review).
 2. The tool reads the work item back; confirm the state landed. Report the identifier, final state, and the verification summary.

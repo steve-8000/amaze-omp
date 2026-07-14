@@ -7,13 +7,15 @@ description: "Planning phase of the amaze workflow. Runs a parallel discovery wa
 
 Load this only when open design decisions remain: unclear module boundaries, several viable decompositions, or a multi-file build whose dependency order is not obvious. A known procedure, however many steps, does not need a plan phase — plan directly in the notepad and go to `skill://amaze-loop`.
 
-The contract from `skill://amaze` still binds: tier, success criteria, two-tier memory, and Plane-parent-only ownership.
+The contract from `skill://amaze` still binds: tier, success criteria (already registered via `amaze_contract_set`), memory split, and Plane-parent-only ownership.
 
-## Step 1 — Discovery wave (parallel, lead with this)
+## Step 1 — Ensure the codegraph index, then discovery wave (parallel, lead with this)
+
+Before any lookups: check for `.codegraph/` at the project root. Missing → run `codegraph init` there once (bash, repo root); it is idempotent, safe to re-run, and this project has standing user approval to run it automatically as part of `amaze-plan`. If init fails, is unsupported for this stack, or exceeds a reasonable timeout, fall back to grep/glob/lsp for the whole task without retrying.
 
 Never guess from memory; locate with the right tool and re-read before you claim or change. Fire 3+ independent lookups in one action; serialize only when one output strictly feeds the next.
 
-- `codegraph_explore` first for how/where/what/flow questions and before edits, when a `.codegraph` index exists; otherwise `grep`/`glob`/`lsp`.
+- `codegraph_explore` first for how/where/what/flow questions and before edits; fall back to `grep`/`glob`/`lsp` only if the index is unavailable.
 - Symbols (definition/references/rename impact/diagnostics) → `lsp`, not text search.
 - Structural shapes / codemods → `ast_grep` / `ast_edit`.
 - Unfamiliar layout → spawn `task` with `agent: scout`, in parallel, one scout per independent area.
@@ -56,7 +58,7 @@ If the plan agent returns clarifying questions, forward them to the user unmodif
 ## Step 4 — Record and hand off
 
 1. Fold the returned plan into the `todo` list (one todo per atomic work unit: an edit plus its verification).
-2. `plane_task_note(note = plan summary, task_key)` — persist the plan on the work item.
+2. `plane_task_note(note = plan summary, task_key)` — persist the plan on the work item; the contract itself is already on record from Phase 1.
 3. Append the plan to the notepad `## Plan`.
 
 **Next:** `read skill://amaze-loop` and begin execution.

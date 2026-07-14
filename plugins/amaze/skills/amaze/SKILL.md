@@ -1,6 +1,6 @@
 ---
 name: amaze
-description: "Evidence-first execution workflow orchestrator for omp. Classifies the change (LIGHT/HEAVY), registers a binding success-criteria contract, keeps two-tier memory (a Plane work item plus a local notepad), and routes each phase to the chained sub-skills amaze-plan, amaze-loop, and amaze-review. Reuses existing omp subagents (scout/plan/review/librarian) through the task tool and defines no new agents. Triggers: amaze, /amaze, ultrawork, 'evidence-based', 'prove it works end to end', 'plan then build then review', 'ship it verified'."
+description: "Evidence-first execution workflow orchestrator for omp. Classifies the change (LIGHT/HEAVY), registers a binding success-criteria contract via a deterministic contract tool, keeps memory split between that contract file and a lightweight notepad, and routes each phase to the chained sub-skills amaze-plan, amaze-loop, and amaze-review. Reuses existing omp subagents (scout/plan/review/librarian) through the task tool and defines no new agents. Triggers: amaze, /amaze, ultrawork, 'evidence-based', 'prove it works end to end', 'plan then build then review', 'ship it verified'."
 ---
 
 # AMAZE
@@ -40,7 +40,7 @@ Load each sub-skill when its phase begins and follow it literally. The contract 
 
 1. Print `AMAZE MODE ENABLED!` once.
 2. Restate the request in one sentence.
-3. Call `plane_task_lookup` to see whether this repo already tracks the task. If resuming, read the work item's comment history as memory, and re-read the local notepad if present, before planning anything new.
+3. Call `plane_task_lookup` to see whether this repo already tracks the task; if it does, call `amaze_status(task_key)` to recover the contract before planning anything new.
 
 ## Phase 1 — The contract
 
@@ -55,10 +55,9 @@ When unsure, take HEAVY. If a HEAVY fact surfaces mid-task, upgrade immediately 
 
 ### Register the binding goal
 
-1. `plane_task_start(task = objective + success criteria, task_key)` — the work item is the durable, human-visible contract for this run.
+1. `amaze_contract_set(task_key, objective, tier, criteria, repo?)` — one call: creates/updates the local contract file `.omp/amaze/<task_key>.json`, finds-or-creates the Plane work item, and posts the contract as a start comment. No separate `plane_task_start`.
 2. `todo init` — the live checklist; exactly one item `in_progress` at a time.
-3. Each criterion names an **exact scenario**: the literal command / page action / payload, the binary PASS/FAIL observable, and the evidence artifact path it will capture. LIGHT: 1-2 criteria (happy path + the riskiest edge). HEAVY: 3+ (happy; edges — boundary/empty/malformed/concurrent; and an adjacent-surface regression named by file + function).
-4. For each criterion, name the failing-first proof (test id or scenario) captured RED before implementation and GREEN after.
+3. Each criterion is `{id?, scenario, observable, proof?}`: an **exact scenario** (the literal command / page action / payload), the binary PASS/FAIL `observable`, and `proof` (`red-green` default, or `review` when there's no test seam). LIGHT: 1-2 criteria (happy path + the riskiest edge). HEAVY: 3+ (happy; edges — boundary/empty/malformed/concurrent; and an adjacent-surface regression named by file + function).
 
 ### task_key convention
 
@@ -66,16 +65,13 @@ When unsure, take HEAVY. If a HEAVY fact surfaces mid-task, upgrade immediately 
 - On a feature branch you may prefix it — `<branch>::<slug>`.
 - Keep it stable and human-readable so `plane_task_lookup` finds it. Resuming the same work uses the same key and continues the same work item.
 
-## Two-tier memory
+## Memory
 
-A Plane sync is a multi-call read-first + write-back sequence, not a free status flip. So split memory by cost:
+The contract file `.omp/amaze/<task_key>.json` is the source of truth for criteria, evidence, and progress — `amaze_evidence` writes it, `amaze_status(task_key)` reads it back in one call. Don't duplicate that state in prose.
 
-| Layer | Store | Holds | Cadence |
-|---|---|---|---|
-| Coarse milestones (durable, human-visible, cross-session) | **Plane work item** (`plane_task_*`) | goal + criteria, phase boundaries, blockers, completion + verification evidence | 2-4 calls per task |
-| Fine working memory (zero-latency, high-frequency) | **local notepad** `local://amaze-<task_key>.md` | findings, RED/GREEN captures, QA artifact paths, Now/Todo | append every step |
+The local notepad `local://amaze-<task_key>.md` holds free-form working memory only: `Plan` / `Findings` / `Learnings` / `Now` / `Todo`. Append-only.
 
-Notepad sections: `Plan` / `Success criteria` / `Now` / `Todo` / `Findings` / `Learnings`. Append-only. After any context loss (compaction), re-read the whole notepad first, then resume from `## Now`.
+Plane stays the durable, human-visible layer (`plane_task_*`); a compaction hook auto-preserves a contract summary, so after any context loss call `amaze_status(task_key)` (and re-read notepad `## Findings` if needed) before resuming from `## Now`.
 
 ## Routing
 

@@ -5,7 +5,7 @@ description: "Execution phase of the amaze workflow. Drives every success criter
 
 # AMAZE — LOOP
 
-Execute until every success criterion PASSES with its evidence captured. The contract from `skill://amaze` binds: tier, criteria, two-tier memory, Plane-parent-only ownership.
+Execute until every success criterion PASSES with its evidence captured. The contract from `skill://amaze` binds: tier, criteria, memory split, Plane-parent-only ownership.
 
 ## The loop, per criterion
 
@@ -16,10 +16,10 @@ Run this for each criterion; batch independent reads/searches/subagents within a
    - a unit test where a seam exists,
    - an integration/e2e test where the behavior lives in wiring,
    - the criterion's real-surface scenario captured failing when no test seam exists.
-   It must fail for the RIGHT reason (not a syntax/import error). Paste RED output into the notepad. No production code yet.
-3. **GREEN** — write the smallest production change that flips RED→GREEN. Re-run; capture GREEN. If GREEN is far larger than the criterion implies, the proof was too coarse — split it.
-4. **SURFACE** — run the real-surface proof the criterion named, end to end, yourself (channel table below). If the RED proof was the scenario itself, re-run it passing. Paste the artifact path into the notepad.
-5. **CLEAN** — tear down every runtime artifact this criterion's QA spawned, then write a one-line receipt.
+   It must fail for the RIGHT reason (not a syntax/import error). Save the output to a file, then `amaze_evidence(task_key, criterion_id, kind: red, artifact_path)`. No production code yet.
+3. **GREEN** — write the smallest production change that flips RED→GREEN. Re-run, save the output, `amaze_evidence(kind: green, artifact_path)` — the tool rejects GREEN without a prior RED, so failing-first order is enforced in code. If GREEN is far larger than the criterion implies, the proof was too coarse — split it.
+4. **SURFACE** — run the real-surface proof the criterion named, end to end, yourself (channel table below). If the RED proof was the scenario itself, re-run it passing. `amaze_evidence(kind: surface, artifact_path)`.
+5. **CLEAN** — tear down every runtime artifact this criterion's QA spawned, then `amaze_evidence(kind: cleanup, note)`.
 6. **VERIFY** — `lsp` diagnostics clean on changed files; related tests green (no skipped/xfail added this turn).
 7. **CLOSE** — mark the todo done; append findings/learnings. Re-run every criterion's scenario after each increment.
 
@@ -39,11 +39,11 @@ For every scenario, name the exact invocation up front (the literal command / AP
 
 ## Prose-target rule
 
-For a prose change (prompt, SKILL.md, rule, markdown) the wording is not behavior. Never pin sentences, phrase presence/absence, or word counts. Pin only a machine-consumed value (a parsed frontmatter field, a sentinel token a hook greps, a JSON sample through its real validator) or one `toBe` equality between two shipped copies. A pure-prose change with no machine consumer has no seam: ship it on review + QA-by-read, with no test — a text grep is pretend-coverage.
+For a prose change (prompt, SKILL.md, rule, markdown) the wording is not behavior. Never pin sentences, phrase presence/absence, or word counts. Pin only a machine-consumed value (a parsed frontmatter field, a sentinel token a hook greps, a JSON sample through its real validator) or one `toBe` equality between two shipped copies. A pure-prose change with no machine consumer has no seam: give it a `proof: review` criterion and ship it on review + QA-by-read — a text grep is pretend-coverage.
 
 ## Cleanup receipts (paired, never skipped)
 
-The moment a QA scenario spawns a resource, register its teardown as its own todo. Before the criterion completes, tear down and record a receipt next to the artifact:
+The moment a QA scenario spawns a resource, register its teardown as its own todo. Before the criterion completes, tear down and record the receipt via `amaze_evidence(kind: cleanup, note)`:
 
 - server PIDs → `kill <pid>`; verify `kill -0` fails
 - `launch` processes → `launch stop`
@@ -56,8 +56,8 @@ No receipt → the criterion stays `in_progress`.
 ## Plane checkpoints (sparingly)
 
 - At a meaningful phase boundary: `plane_task_note(note, task_key)`.
-- On a blocker: `plane_task_block(reason, task_key)` — surfaces it for a human without changing the item's state.
-- Everything high-frequency (each RED/GREEN, each finding) goes to the local notepad, not Plane.
+- On a blocker: `plane_task_block(reason, task_key)` — surfaces it for a human without changing the item's state, and disarms the session-stop gate so you aren't nagged while waiting (re-arm by re-running `amaze_contract_set`).
+- Findings and learnings go to the local notepad; RED/GREEN/SURFACE/CLEAN evidence goes to `amaze_evidence`, not Plane.
 
 ## Delegation
 

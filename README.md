@@ -21,20 +21,41 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
   The skills chain via `read skill://amaze-plan|amaze-loop|amaze-review`; the entry
   `amaze` skill owns the contract and routes between phases.
 
-- `tools/plane-bridge.ts` — the `plane_task_start|note|complete|lookup|block` custom
-  tools. They call the Plane REST API directly (zero MCP schema cost) and persist
-  task memory as work items.
+- `lib/contract-core.ts` — the **contract core**: zero-dep local contract state at
+  `.omp/amaze/<task_key>.json`. Deterministically enforces failing-first transitions
+  (`pending → red → green → surfaced`; RED-less GREEN is rejected), evidence-artifact
+  validation (existing, non-empty, realpath-contained in cwd/tmp/`~/.omp`), and the
+  completion verdict (`isDone` is a pure function, not an LLM self-report).
 
-- `hooks/post/amaze-status.ts` — a low-risk hook that shows Plane backend readiness
-  in the footer.
+- `tools/plane-bridge.ts` — custom tools, zero MCP schema cost (direct Plane REST):
+  - `amaze_contract_set` — registers/updates the contract file AND find-or-creates the
+    Plane work item with the contract as a start comment (absorbs `plane_task_start`);
+    arms the session-stop gate by default (`enforce: false` opts out).
+  - `amaze_evidence` — records red/green/surface/cleanup evidence with deterministic
+    validation; no Plane round-trip, so it is free at high frequency.
+  - `amaze_status` — one-call contract recovery after compaction or resume.
+  - `plane_task_complete` — **gated**: rejects with an error while unproven criteria
+    remain (`needs_review: true` is the only bypass); on success it closes the contract,
+    disarming all hooks. `plane_task_block` also disarms the stop gate while a human
+    is needed. Plus `plane_task_note|lookup`.
+
+- `hooks/post/amaze-status.ts` — zero-token enforcement/visibility:
+  criterion progress in the footer (`session_start`/`turn_end`), a deterministic
+  contract summary injected into compaction context (`session.compacting`) so
+  compaction can never lose the contract, and a **session-stop continuation gate**:
+  while an armed contract has unproven criteria, stopping injects a continuation
+  directive (the harness caps it at 8 consecutive continuations).
 
 ## Design principles
 
 - **No omp core changes.** A marketplace install loads the skills, hook, and tools.
+- **Contract as code, prompts for judgment.** Failing-first ordering, evidence
+  validation, and the completion gate live in `contract-core.ts`; the skills keep only
+  what needs judgment (tier triage, criteria quality, adversarial critique, review).
 - **No new subagents.** The skills orchestrate omp's existing agents (scout/plan/
   review/librarian) through the `task` tool.
-- **Two-tier memory.** Plane work items for coarse, durable, human-visible milestones;
-  a local notepad for fine, high-frequency working memory.
+- **Two-tier memory.** The contract file + Plane work item for durable state;
+  a local notepad for free-form findings only.
 - **Lean.** lazycodex's publish/marketplace-sync CI and team-mode infrastructure are
   out of scope by design.
 
@@ -56,6 +77,11 @@ The `plane_task_*` tools require:
 ```
 PLANE_API_KEY, PLANE_BASE_URL (default https://plane.example.com), PLANE_WORKSPACE_SLUG (default my-workspace)
 ```
+
+## Local contract state
+
+`.omp/amaze/<task_key>.json` is per-user working state in the target repo — add
+`.omp/` to that repo's `.gitignore`.
 
 ## plane-bridge is the single source
 
