@@ -31,19 +31,19 @@ function taskEvent(count: number): Parameters<ToolCallHandler>[0] {
 }
 
 describe("delegation-guard", () => {
-	test("배치 5개 이상은 차단하고 이유에 상한과 웨이브 지시를 담는다", () => {
+	test("배치 3개 이상은 차단하고 이유에 상한과 웨이브 지시를 담는다", () => {
 		const handler = captureHandler();
-		for (const n of [5, 7, 12]) {
+		for (const n of [3, 5, 7, 12]) {
 			const result = handler(taskEvent(n));
 			expect(result?.block).toBe(true);
 			expect(result?.reason).toContain(`${n}개`);
-			expect(result?.reason).toContain("4");
+			expect(result?.reason).toContain("상한(2)");
 		}
 	});
 
 	test("상한 이하 배치는 통과한다", () => {
 		const handler = captureHandler();
-		for (const n of [1, 2, 3, 4]) {
+		for (const n of [1, 2]) {
 			expect(handler(taskEvent(n))).toBeUndefined();
 		}
 	});
