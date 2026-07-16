@@ -78,6 +78,27 @@ The `plane_task_*` tools require:
 PLANE_API_KEY, PLANE_BASE_URL (default https://plane.example.com), PLANE_WORKSPACE_SLUG (default my-workspace)
 ```
 
+## Optional: codegraph MCP
+
+`amaze/plan.md` uses `codegraph_explore` when a `.codegraph/` index is present
+(auto-`codegraph init`'d on first use); otherwise it falls back to grep/glob/lsp
+automatically. To enable it:
+
+```
+npm i -g @colbymchenry/codegraph
+```
+
+```json
+{
+  "mcpServers": {
+    "codegraph": { "type": "stdio", "command": "codegraph", "args": ["serve", "--mcp"] }
+  }
+}
+```
+
+No other MCP server is required or used by this plugin — `plane_task_*` is a
+direct REST integration (see above), not an MCP server.
+
 ## Local contract state
 
 `.omp/amaze/<task_key>.json` is per-user working state in the target repo — add
