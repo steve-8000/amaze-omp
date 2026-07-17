@@ -58,4 +58,13 @@ No receipt → the criterion stays `in_progress`.
 
 Delegate only when the overhead is worth it: single-file, known-pattern, or small (~<50-line-diff) changes are done and checked by you directly — no spawn, no review round-trip. Real independent slices go to parallel `worker` subagents with tight scope, **at most 2 per batch** (the concurrency cap; the delegation-guard hook blocks larger batches — split into waves). Each brief carries Target/Change/Acceptance sections, demands evidence artifacts (saved log/test-output paths, not narrative claims), and forbids formatters/linters/full-suite runs (you run those once at the end). For long-running slices, include the Plane `project_id` + `work_item_id` in the brief so the worker can post checkpoint comments via `plane_progress_note`; workers never call any other Plane or amaze tool. Route `review` (opus) once at integration time over HEAVY or multi-slice worker output — not per slice, and not for LIGHT single slices you can verify yourself. You own the plan, integration, and final verification.
 
+## Fix-list intake (re-entry from review)
+
+The review phase runs in an independent, read-only thread and never edits code — every fix lands here, in the main thread. When review returns a numbered fix list:
+
+1. Fold each fix item into the `todo` list as its own item, keeping the reviewer's numbering, severity, and `file:line` reference.
+2. Fix each item through the same loop discipline above — a behavior fix gets its RED→GREEN→SURFACE evidence like any criterion; a pure code-quality fix gets diagnostics-clean + related-tests-green.
+3. Never argue a finding away silently: fix it, or record a one-line rebuttal with evidence in the notepad for the reviewer to re-judge.
+4. When the list is exhausted, return to `skill://amaze/review.md` for re-verification. Iterate until the review passes — or, if genuinely stuck on an item, record exactly where and why (what was tried, what is missing) and surface it instead of papering over.
+
 **Next:** when every criterion PASSES with evidence, `read skill://amaze/review.md`.

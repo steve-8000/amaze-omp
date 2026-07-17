@@ -8,10 +8,28 @@ Call `amaze_status(task_key)` to confirm EVERY criterion PASSES with its evidenc
 
 Re-run each criterion's scenario once more and confirm PASS inline with the evidence paths.
 
-## Step 2 — Review
+## Step 2 — Independent review thread
 
-- **HEAVY** → dispatch an independent `task` `agent: review` (or `reviewer`). Give it the change set, the success criteria, and the evidence. Fix what it raises and re-review; loop until unconditional approval. Do not self-certify HEAVY work.
-- **LIGHT** → self-review recorded in the notepad: walk each criterion, its evidence, and the diff from the user's perspective. Confirm every changed line traces to the request.
+- **HEAVY** → dispatch an independent review thread: `task` `agent: review`, given the change set, the original requirements, the success criteria, and the evidence artifacts. Do not self-certify HEAVY work.
+- **LIGHT** → self-review recorded in the notepad, walking the same six aspects below against each criterion, its evidence, and the diff from the user's perspective. Confirm every changed line traces to the request.
+
+### Reviewer contract (binding for the review thread)
+
+The reviewer NEVER edits code — read-only verification, and verification against exactly these six aspects, nothing else:
+
+1. **Requirements completeness** — every asked-for deliverable exists; no silent scope shrink; nothing extra smuggled in.
+2. **Logical correctness** — the implementation actually does what the criteria claim; control/data flow holds under scrutiny.
+3. **Edge cases** — boundary, empty, malformed, concurrent, and failure inputs behave sanely.
+4. **Code quality** — dead code, leftover scaffolding, duplicated conventions, naming, maintainability for the next reader.
+5. **Test coverage** — each changed contract is defended by a test that would fail on a plausible bug; no pretend-coverage.
+6. **Actual execution results** — the captured RED/GREEN/SURFACE evidence is real, recent, and matches the claims; re-run scenarios where cheap.
+
+### Fix-list protocol (iterate until pass)
+
+1. The reviewer submits its findings to the main thread as a **numbered fix list**: each item names the aspect violated, severity, `file:line`, expected vs actual. No prose verdicts without items; no code edits.
+2. The main thread fixes: `read skill://amaze/loop.md` § Fix-list intake — fold items into todos, fix with loop discipline, capture evidence.
+3. Re-dispatch the SAME review scope for re-verification on the updated diff plus the previous fix list (re-review may focus on the fixed diff, but any aspect regression is in scope).
+4. Repeat 1-3 until the reviewer returns **unconditional PASS on all six aspects** — or an item is genuinely stuck, in which case stop iterating and report precisely where it is blocked: the item, what was tried, and what is missing. Never declare done with an open fix list.
 
 Reviewers are read-only reporters — they never touch Plane. You record their outcome; for a `proof: review` criterion, save the verdict to a file and log it via `amaze_evidence(kind: surface, artifact_path)`.
 
