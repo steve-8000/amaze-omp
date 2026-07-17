@@ -14,7 +14,7 @@ Never guess from memory; locate with the right tool and re-read before you claim
 - Symbols (definition/references/rename impact/diagnostics) → `lsp`, not text search.
 - Structural shapes / codemods → `ast_grep` / `ast_edit`.
 - Unfamiliar layout → spawn `task` with `agent: scout`, in parallel, one scout per independent area.
-- External API/library/doc research → `task` with `agent: librarian`.
+- External API/library/doc research → `web_search` directly, or `task` with `agent: scout` for bulk source reading.
 
 Record every non-obvious fact with a `file:line` reference in the notepad `## Findings`.
 
@@ -45,10 +45,19 @@ task(agent: plan, run in foreground):
   - weave each risk's mitigation into the relevant task,
   - surface each open question as a user-input gate before dependent tasks,
   - give every task explicit success criteria and verification.
+  - the work is high-difficulty: the plan comes first and is completed before any
+    production code; after the build, an independent review thread will judge the
+    result on six aspects — requirements completeness, logical correctness, edge
+    cases, code quality, test coverage, and actual execution results — so every
+    task's success criteria must be checkable against those aspects.
   <paste findings + distilled insight bundle>
 ```
 
 If the plan agent returns clarifying questions, forward them to the user unmodified. Do not pre-draft tasks that anchor the planner.
+
+## High-difficulty rule — plan before code
+
+For high-difficulty (HEAVY) work, development starts only after this plan phase is complete: constraints, decomposition, dependency order, and per-task verification are all settled first. Do not interleave planning with production edits. Bake the eventual review into the plan: the final phase dispatches an independent, read-only review thread that verifies the six aspects above and returns a fix list — a task whose success criteria cannot be judged against those aspects is under-specified; tighten it now.
 
 ## Step 4 — Record and hand off
 

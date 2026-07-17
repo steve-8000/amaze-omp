@@ -52,8 +52,8 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
 - **Contract as code, prompts for judgment.** Failing-first ordering, evidence
   validation, and the completion gate live in `contract-core.ts`; the skills keep only
   what needs judgment (tier triage, criteria quality, adversarial critique, review).
-- **No new subagents.** The skills orchestrate omp's existing agents (scout/plan/
-  review/librarian) through the `task` tool.
+- **No new subagents.** The skills orchestrate omp's existing agents (plan/review/
+  worker/scout/designer/sonic) through the `task` tool.
 - **Two-tier memory.** The contract file + Plane work item for durable state;
   a local notepad for free-form findings only.
 - **Lean.** lazycodex's publish/marketplace-sync CI and team-mode infrastructure are
