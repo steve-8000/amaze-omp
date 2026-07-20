@@ -37,7 +37,7 @@ Reviewers are read-only reporters — they never touch Plane. You record their o
 
 - Remove scaffolding, dead code, debug prints, and any temporary shims this work introduced. Migrate every caller; leave no aliases, re-exports, or deprecated paths.
 - Confirm `lsp` diagnostics are clean on all changed files and the related test suite is green (no skipped/xfail added this run).
-- Finalize the notepad `## Learnings` with non-obvious patterns and pitfalls.
+- Finalize the notepad `## Learnings` with non-obvious patterns and pitfalls; any decision made along the way that wasn't forced by the ask gets a `[DECISION] <choice> — <one-line rationale>` line so it doesn't get silently re-litigated or re-added later.
 
 ## Step 4 — Close the work item
 

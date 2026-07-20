@@ -1,7 +1,7 @@
 // contract-core의 관찰 가능한 계약을 방어한다:
 // 전이 규칙(failing-first), 완료 판정, 아티팩트 containment, 원자적 저장/로드.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -165,6 +165,57 @@ describe("저장/로드", () => {
 		expect(c.criteria[0].scenario).toBe("갱신된 시나리오");
 		expect(c.criteria[0].status).toBe("red");
 		expect(c.criteria[0].evidence.red?.note).toBe("r");
+	});
+});
+
+describe("restore-point 스냅샷 (.history/)", () => {
+	test("두 번째 save는 첫 번째 저장분을 .history/에 스냅샷으로 남긴다", () => {
+		const c = makeContract();
+		saveContract(cwd, c);
+		const firstJson = readFileSync(join(cwd, ".omp/amaze", "fix-login.json"), "utf8");
+		applyEvidence(c, "c1", { kind: "red", note: "r" });
+		saveContract(cwd, c);
+		const historyDir = join(cwd, ".omp/amaze/.history");
+		const snapshots = readdirSync(historyDir).filter((n) => n.startsWith("fix-login-"));
+		expect(snapshots).toHaveLength(1);
+		expect(readFileSync(join(historyDir, snapshots[0]), "utf8")).toBe(firstJson);
+	});
+
+	test("12회 저장 후 해당 task_key 스냅샷은 정확히 10개만 남는다", () => {
+		const c = makeContract();
+		for (let i = 0; i < 12; i++) {
+			applyEvidence(c, "c1", { kind: "red", note: `r${i}` });
+			saveContract(cwd, c);
+		}
+		const historyDir = join(cwd, ".omp/amaze/.history");
+		const snapshots = readdirSync(historyDir).filter((n) => n.startsWith("fix-login-"));
+		expect(snapshots).toHaveLength(10);
+	});
+
+	test("prefix가 겹치는 task_key(fix-login vs fix-login-2)는 스냅샷 예산이 서로 섞이지 않는다", () => {
+		const a = makeContract(); // task_key: fix-login
+		const b = newContract("fix-login-2", "다른 계약", "LIGHT");
+		upsertCriteria(b, [{ scenario: "s", observable: "o" }]);
+		saveContract(cwd, a);
+		saveContract(cwd, b);
+		applyEvidence(b, "c1", { kind: "red", note: "b" });
+		saveContract(cwd, b); // b의 유일한 스냅샷 1개 생성 — a의 prune 대상이 되면 안 됨
+		for (let i = 0; i < 12; i++) {
+			applyEvidence(a, "c1", { kind: "red", note: `a${i}` });
+			saveContract(cwd, a); // a를 12회 갱신 저장 -> a 스냅샷 11개 생성, prune 후 10개
+		}
+		const historyDir = join(cwd, ".omp/amaze/.history");
+		const names = readdirSync(historyDir);
+		expect(names.filter((n) => /^fix-login-2-\d{4}/.test(n))).toHaveLength(1);
+		expect(names.filter((n) => /^fix-login-\d{4}/.test(n))).toHaveLength(10);
+	});
+
+	test("listContracts()는 .history/ 하위 스냅샷을 계약으로 세지 않는다", () => {
+		const c = makeContract();
+		saveContract(cwd, c);
+		saveContract(cwd, c);
+		saveContract(cwd, c);
+		expect(listContracts(cwd)).toHaveLength(1);
 	});
 });
 

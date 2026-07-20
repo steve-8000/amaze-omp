@@ -54,6 +54,27 @@ function escapeHtml(text: string): string {
 	return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// 시크릿/PII가 Plane으로 나가는 유일한 sink(addComment/createWorkItem)에 적용하는
+// 결정적 redact 스캔. 오탐으로 정상 요약이 뭉개지지 않도록 고정밀 패턴만 사용.
+const SECRET_PATTERNS: readonly RegExp[] = [
+	/AKIA[0-9A-Z]{16}/g, // AWS access key
+	/gh[pousr]_[A-Za-z0-9]{36,}/g, // GitHub 클래식 토큰 (ghp_/gho_/ghu_/ghs_/ghr_)
+	/github_pat_[A-Za-z0-9_]{20,}/g, // GitHub fine-grained PAT
+	/(?<![A-Za-z0-9])sk-[A-Za-z0-9]{20,}/g, // OpenAI 스타일 API 키 (식별자 중간의 "sk-" 오탐 방지)
+	/xox[baprs]-[A-Za-z0-9-]{10,}/g, // Slack 토큰
+	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+	/Bearer\s+[A-Za-z0-9\-._~+/]{20,}=*/gi, // 대소문자 무관 + 최소 길이로 "Bearer tokens" 같은 평문 오탐 방지
+	// 키 앞뒤 접두/접미(DB_PASSWORD, client_secret 등)까지 잡되, 값은 "<" 이전까지만
+	// 매칭해 addComment가 HTML로 감싼 뒤 스캔해도 마크업을 먹지 않는다.
+	/[A-Za-z0-9_-]*(?:password|api[_-]?key|secret)[A-Za-z0-9_-]*\s*[:=]\s*[^\s<]+/gi,
+];
+
+export function redactScan(text: string): string {
+	let out = text;
+	for (const pattern of SECRET_PATTERNS) out = out.replace(pattern, "[REDACTED]");
+	return out;
+}
+
 function sanitizeProjectName(repoName: string): string {
 	// Plane 프로젝트 name 필드는 하이픈 등 특수문자를 거부한다(400 에러 확인됨).
 	return repoName.replace(/[^a-zA-Z0-9]+/g, " ").trim() || "repo";
@@ -179,8 +200,8 @@ const factory: CustomToolFactory = (pi) => {
 		return planeFetch(`/projects/${projectId}/issues/`, WorkItemSchema, {
 			method: "POST",
 			body: JSON.stringify({
-				name,
-				description_html: `<p>${escapeHtml(descriptionText)}</p>`,
+				name: redactScan(name),
+				description_html: `<p>${escapeHtml(redactScan(descriptionText))}</p>`,
 				state: stateId,
 				external_source: "omp-task",
 				external_id: externalId,
@@ -198,7 +219,7 @@ const factory: CustomToolFactory = (pi) => {
 	async function addComment(projectId: string, workItemId: string, html: string): Promise<void> {
 		await planeFetch(`/projects/${projectId}/issues/${workItemId}/comments/`, CommentSchema, {
 			method: "POST",
-			body: JSON.stringify({ comment_html: html }),
+			body: JSON.stringify({ comment_html: redactScan(html) }),
 		});
 	}
 
@@ -263,7 +284,7 @@ const factory: CustomToolFactory = (pi) => {
 				let item = matchWorkItem(project, await listWorkItems(project.id), params.task_key);
 				item = item
 					? await updateWorkItemState(project.id, item.id, startedState.id)
-					: await createWorkItem(project.id, params.task.slice(0, 120), params.task, startedState.id, params.task_key);
+					: await createWorkItem(project.id, redactScan(params.task).slice(0, 120), params.task, startedState.id, params.task_key);
 				await addComment(project.id, item.id, `<p><b>시작</b>: ${escapeHtml(params.task)}</p>`);
 				const identifier = identifierOf(project, item);
 				return {
@@ -441,7 +462,7 @@ const factory: CustomToolFactory = (pi) => {
 					let item = matchWorkItem(project, await listWorkItems(project.id), params.task_key);
 					item = item
 						? await updateWorkItemState(project.id, item.id, startedState.id)
-						: await createWorkItem(project.id, params.objective.slice(0, 120), params.objective, startedState.id, params.task_key);
+						: await createWorkItem(project.id, redactScan(params.objective).slice(0, 120), params.objective, startedState.id, params.task_key);
 					const criteriaHtml = contract.criteria
 						.map((c) => `<li>${escapeHtml(`${c.id} [${c.proof}]: ${c.scenario} → ${c.observable}`)}</li>`)
 						.join("");

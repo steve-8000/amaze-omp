@@ -16,7 +16,7 @@ Run this for each criterion; batch independent reads/searches/subagents within a
 4. **SURFACE** — run the real-surface proof the criterion named, end to end, yourself (channel table below). If the RED proof was the scenario itself, re-run it passing. `amaze_evidence(kind: surface, artifact_path)`.
 5. **CLEAN** — tear down every runtime artifact this criterion's QA spawned, then `amaze_evidence(kind: cleanup, note)`.
 6. **VERIFY** — `lsp` diagnostics clean on changed files; related tests green (no skipped/xfail added this turn).
-7. **CLOSE** — mark the todo done; append findings/learnings. Re-run every criterion's scenario after each increment.
+7. **CLOSE** — mark the todo done; append findings/learnings. Record any non-obvious design/scope choice as `[DECISION] <choice> — <one-line rationale>` so a later reader can tell what was decided on purpose versus what just happened. Re-run every criterion's scenario after each increment.
 
 ## Manual-QA channels (SURFACE)
 

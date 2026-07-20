@@ -7,7 +7,7 @@
 //   - 완료 판정: isDone()은 순수 함수 — LLM 자기신고가 아님
 // (lazycodex boulder-state / ulw-loop goal-status 패턴의 amaze판.)
 
-import { mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, resolve, sep } from "node:path";
 
@@ -54,13 +54,14 @@ export interface Contract {
 }
 
 const STATE_DIR = ".omp/amaze";
+const TASK_KEY_UNSAFE_CHARS = /[^a-zA-Z0-9._-]+/g; // contractPath()와 스냅샷 파일명이 공유하는 무해화 규칙 — 갈라지면 안 됨
 
 export function contractDir(cwd: string): string {
 	return join(cwd, STATE_DIR);
 }
 
 export function contractPath(cwd: string, taskKey: string): string {
-	const safe = taskKey.replace(/[^a-zA-Z0-9._-]+/g, "-");
+	const safe = taskKey.replace(TASK_KEY_UNSAFE_CHARS, "-");
 	return join(contractDir(cwd), `${safe}.json`);
 }
 
@@ -91,11 +92,65 @@ export function listContracts(cwd: string): Contract[] {
 	return out.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
+const HISTORY_DIR = ".history";
+const HISTORY_KEEP = 10;
+let historySnapshotSeq = 0; // 같은 밀리초 안에 여러 번 저장돼도 스냅샷 파일명이 겹치지 않도록 하는 단조 증가 카운터
+
+/**
+ * 덮어쓰기 직전 기존 계약 파일을 `.history/<task_key>-<ts>-<seq>.json`에 스냅샷하고
+ * task_key당 최신 HISTORY_KEEP개만 남긴다. `listContracts()`는 `.json`으로
+ * 끝나는 하위 디렉터리 엔트리만 읽지 않으므로(`.history`는 디렉터리) 영향 없다.
+ * 최초 저장(이전 파일 없음)은 스냅샷할 대상이 없어 조용히 건너뛴다.
+ * 스냅샷/prune은 전부 best-effort — 실패해도 계약 저장 자체(saveContract)는
+ * 절대 막지 않는다.
+ */
+function snapshotBeforeOverwrite(cwd: string, taskKey: string): void {
+	let existing: string;
+	try {
+		existing = readFileSync(contractPath(cwd, taskKey), "utf8");
+	} catch {
+		return;
+	}
+	try {
+		const dir = join(contractDir(cwd), HISTORY_DIR);
+		mkdirSync(dir, { recursive: true });
+		const key = taskKey.replace(TASK_KEY_UNSAFE_CHARS, "-");
+		const ts = new Date().toISOString().replace(/[:.]/g, "-");
+		const seq = (historySnapshotSeq++).toString(36);
+		writeFileSync(join(dir, `${key}-${ts}-${seq}.json`), existing, "utf8");
+		pruneHistory(dir, key);
+	} catch {
+		// 최선 노력 — 스냅샷/prune 실패가 저장 자체를 막으면 안 됨
+	}
+}
+
+function pruneHistory(dir: string, key: string): void {
+	// task_key가 "-"로 갈릴 수 있어("fix" vs "fix-2") 단순 prefix 비교는 다른
+	// task_key의 스냅샷까지 같은 예산에 섞어 지운다 — 타임스탬프 모양까지 앵커링해
+	// key당 독립된 예산을 보장한다.
+	const anchor = new RegExp(`^${key.replace(/\./g, "\\.")}-\\d{4}-\\d{2}-\\d{2}T`);
+	let names: string[];
+	try {
+		names = readdirSync(dir).filter((n) => anchor.test(n) && n.endsWith(".json"));
+	} catch {
+		return;
+	}
+	names.sort(); // ISO 타임스탬프 + seq 기반 파일명 — 사전순 정렬 = 시간순
+	for (const stale of names.slice(0, Math.max(0, names.length - HISTORY_KEEP))) {
+		try {
+			unlinkSync(join(dir, stale));
+		} catch {
+			// 최선 노력 — 개별 삭제 실패가 나머지 prune을 막으면 안 됨
+		}
+	}
+}
+
 /** tmp 파일 + rename으로 원자적 저장. */
 export function saveContract(cwd: string, contract: Contract): void {
 	contract.updated_at = new Date().toISOString();
 	const path = contractPath(cwd, contract.task_key);
 	mkdirSync(contractDir(cwd), { recursive: true });
+	snapshotBeforeOverwrite(cwd, contract.task_key);
 	const tmp = `${path}.tmp-${process.pid}`;
 	writeFileSync(tmp, `${JSON.stringify(contract, null, "\t")}\n`, "utf8");
 	renameSync(tmp, path);

@@ -25,7 +25,10 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
   `.omp/amaze/<task_key>.json`. Deterministically enforces failing-first transitions
   (`pending → red → green → surfaced`; RED-less GREEN is rejected), evidence-artifact
   validation (existing, non-empty, realpath-contained in cwd/tmp/`~/.omp`), and the
-  completion verdict (`isDone` is a pure function, not an LLM self-report).
+  completion verdict (`isDone` is a pure function, not an LLM self-report). Every
+  `saveContract()` call snapshots the previous version to `.omp/amaze/.history/`
+  first (latest 10 kept per `task_key`) — a manual restore point if a later write
+  clobbers criteria/evidence by mistake.
 
 - `tools/plane-bridge.ts` — custom tools, zero MCP schema cost (direct Plane REST):
   - `amaze_contract_set` — registers/updates the contract file AND find-or-creates the
@@ -38,6 +41,10 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
     remain (`needs_review: true` is the only bypass); on success it closes the contract,
     disarming all hooks. `plane_task_note(blocker: true)` also disarms the stop gate while a human
     is needed. Plus `plane_task_note|lookup`.
+  - `redactScan()` — applied inside `addComment`/`createWorkItem`, the two functions
+    every outbound Plane write funnels through: strips high-confidence secret patterns
+    (AWS/GitHub/OpenAI/Slack tokens, PEM private keys, `Bearer` tokens, `password=`/
+    `api_key=`/`secret=` values) before the text leaves the machine.
 
 - `hooks/post/amaze-status.ts` — zero-token enforcement/visibility:
   criterion progress in the footer (`session_start`/`turn_end`), a deterministic
@@ -45,6 +52,13 @@ plugin, **without modifying omp core**, and wires Plane in as durable project me
   compaction can never lose the contract, and a **session-stop continuation gate**:
   while an armed contract has unproven criteria, stopping injects a continuation
   directive (the harness caps it at 8 consecutive continuations).
+
+- `hooks/post/destructive-guard.ts` — a second, independent `tool_call` gate
+  (same idiom as `delegation-guard.ts`): blocks `bash` calls matching high-confidence
+  destructive patterns (`rm -rf`, `git reset --hard`, `git push --force`,
+  `DROP TABLE/DATABASE`, `kubectl delete`, `docker rm -f`/`system prune`) with
+  `node_modules`/`dist`/build-output directories exempted. Pure matcher function
+  (`matchDestructive`) is unit-tested independently of the hook wiring.
 
 ## Design principles
 
