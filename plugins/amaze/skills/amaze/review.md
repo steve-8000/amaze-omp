@@ -17,12 +17,12 @@ Re-run each criterion's scenario once more and confirm PASS inline with the evid
 
 The reviewer NEVER edits code — read-only verification, and verification against exactly these six aspects, nothing else:
 
-1. **Requirements completeness** — every asked-for deliverable exists; no silent scope shrink; nothing extra smuggled in.
-2. **Logical correctness** — the implementation actually does what the criteria claim; control/data flow holds under scrutiny.
-3. **Edge cases** — boundary, empty, malformed, concurrent, and failure inputs behave sanely.
-4. **Code quality** — dead code, leftover scaffolding, duplicated conventions, naming, maintainability for the next reader.
-5. **Test coverage** — each changed contract is defended by a test that would fail on a plausible bug; no pretend-coverage.
-6. **Actual execution results** — the captured RED/GREEN/SURFACE evidence is real, recent, and matches the claims; re-run scenarios where cheap.
+1. **Requirements completeness** — every asked-for deliverable exists; no silent scope shrink; nothing extra smuggled in; explicitly deferred scope recorded in the notepad is not a completeness finding.
+2. **Logical correctness** — the implementation actually does what the criteria claim; control/data flow holds under scrutiny; behavior inherited unchanged from surrounding code is not a correctness finding of this diff.
+3. **Edge cases** — boundary, empty, malformed, concurrent, and failure inputs behave sanely; a speculative edge case with no reachable input path is not a finding.
+4. **Code quality** — dead code, leftover scaffolding, duplicated conventions, naming, maintainability for the next reader; pre-existing debt outside this diff is not a finding.
+5. **Test coverage** — each changed contract is defended by a test that would fail on a plausible bug; no pretend-coverage; absence of tests for unchanged contracts is not a finding.
+6. **Actual execution results** — the captured RED/GREEN/SURFACE evidence is real, recent, and matches the claims; re-run scenarios where cheap; a flaky or environment-specific failure unrelated to the diff is not a finding here.
 
 ### Fix-list protocol (iterate until pass)
 
@@ -38,6 +38,7 @@ Reviewers are read-only reporters — they never touch Plane. You record their o
 - Remove scaffolding, dead code, debug prints, and any temporary shims this work introduced. Migrate every caller; leave no aliases, re-exports, or deprecated paths.
 - Confirm `lsp` diagnostics are clean on all changed files and the related test suite is green (no skipped/xfail added this run).
 - Finalize the notepad `## Learnings` with non-obvious patterns and pitfalls; any decision made along the way that wasn't forced by the ask gets a `[DECISION] <choice> — <one-line rationale>` line so it doesn't get silently re-litigated or re-added later.
+- If the repo has a CHANGELOG, the new entry answers what changed / why it matters / how to use it — fewer than two of those three answered means rewrite it; change it with an exact-match, in-place edit, never a wholesale regenerate/overwrite.
 
 ## Step 4 — Close the work item
 
